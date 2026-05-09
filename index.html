@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Inventory Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f1ea;
+  --surface: #fdfaf4;
+  --ink: #1a1715;
+  --ink-muted: #6b6660;
+  --ink-faint: #a39e96;
+  --line: #d8d2c7;
+  --line-soft: #e8e2d6;
+  --accent: #c2410c;
+  --accent-soft: #fef0e6;
+  --success: #15803d;
+  --success-soft: #e8f5ec;
+  --warn: #a16207;
+  --warn-soft: #fdf3d4;
+  --danger: #b91c1c;
+  --danger-soft: #fde9e7;
+  --display: 'Fraunces', Georgia, serif;
+  --body: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 16px 100px;
+}
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+h1 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  font-style: italic;
+}
+.session-info { font-size: 12px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.session-info .count { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+
+/* Mode picker */
+.mode-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.mode-btn {
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--ink-muted);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: all 0.15s ease;
+}
+.mode-btn:hover { border-color: var(--ink-faint); }
+.mode-btn .label { font-size: 14px; color: var(--ink); }
+.mode-btn .hint { font-size: 11px; color: var(--ink-faint); font-family: var(--mono); }
+.mode-btn.active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.mode-btn.active .label { color: var(--surface); }
+.mode-btn.active .hint { color: var(--ink-faint); opacity: 0.7; }
+
+/* Capture stage */
+.stage {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+/* Empty state */
+.empty-state {
+  padding: 36px 24px;
+  text-align: center;
+}
+.empty-state-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.empty-state h2 {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.empty-state p { font-size: 13px; color: var(--ink-muted); margin-bottom: 18px; }
+.empty-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn-primary {
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 12px 22px;
+  background: var(--ink);
+  color: var(--surface);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-secondary {
+  font-family: var(--body);
+  font-size: 14px;
+  padding: 12px 18px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+input[type="file"] { display: none; }
+
+/* Photo display */
+.photo-area {
+  position: relative;
+  background: #1a1715;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  max-height: 480px;
+  overflow: hidden;
+}
+.photo-canvas-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  max-height: 480px;
+}
+#photoImg, #photoCanvas {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  width: auto;
+  height: auto;
+}
+#photoCanvas { display: none; }
+
+/* Crop overlay */
+.crop-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+}
+.crop-overlay.active { display: block; pointer-events: auto; }
+.crop-box {
+  position: absolute;
+  border: 2px solid #fce8c6;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.55);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.crop-handle {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: #fce8c6;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.crop-overlay.active { touch-action: none; }
+.crop-handle.tl { top: -12px; left: -12px; cursor: nwse-resize; }
+.crop-handle.tr { top: -12px; right: -12px; cursor: nesw-resize; }
+.crop-handle.bl { bottom: -12px; left: -12px; cursor: nesw-resize; }
+.crop-handle.br { bottom: -12px; right: -12px; cursor: nwse-resize; }
+
+/* Photo action toolbar */
+.photo-actions {
+  padding: 12px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.photo-actions button {
+  flex: 1;
+  min-width: 110px;
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.photo-actions .ocr-btn {
+  background: var(--ink);
+  color: var(--surface);
+  border: 1px solid var(--ink);
+}
+.photo-actions .crop-btn {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.photo-actions .retake-btn {
+  background: var(--surface);
+  color: var(--ink-muted);
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+.photo-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* OCR progress */
+.ocr-progress {
+  display: none;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--accent);
+  font-family: var(--mono);
+}
+.ocr-progress.show { display: block; }
+
+/* Detection result */
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: none;
+}
+.result-card.show { display: block; }
+.result-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+.result-value {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  word-break: break-all;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--line);
+  padding: 4px 0;
+  width: 100%;
+  color: var(--ink);
+  outline: none;
+  text-transform: uppercase;
+}
+.result-value:focus { border-bottom-color: var(--accent); }
+.result-status {
+  margin-top: 8px;
+  font-size: 12px;
+  font-family: var(--mono);
+}
+.result-status.ok { color: var(--success); }
+.result-status.warn { color: var(--warn); }
+.result-status.bad { color: var(--danger); }
+.result-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.result-actions button {
+  flex: 1;
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.result-actions .save-btn {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+}
+
+/* Scans list */
+.scans-section { margin-top: 24px; }
+.scans-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.scans-header h2 {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 18px;
+  font-style: italic;
+}
+.export-btn {
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  background: var(--ink);
+  color: var(--surface);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.export-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.scans-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--ink-faint);
+  font-style: italic;
+  font-size: 14px;
+}
+.scans-list { list-style: none; }
+.scan-item {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.scan-item:last-child { border-bottom: none; }
+.scan-type {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-align: center;
+  font-family: var(--mono);
+}
+.scan-type.ipad { background: #e7e0d2; color: #5a4a2a; }
+.scan-type.iphone { background: #ddd5c8; color: #4a3e26; }
+.scan-id { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+.scan-meta { font-size: 10px; color: var(--ink-faint); font-family: var(--mono); }
+.scan-delete {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 6px;
+  font-size: 16px;
+  border-radius: 4px;
+}
+.scan-delete:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* Tip */
+.tip {
+  margin-top: 16px;
+  background: var(--warn-soft);
+  border-left: 3px solid var(--warn);
+  border-radius: 4px;
+  font-size: 12px;
+  color: #735410;
+  line-height: 1.5;
+  overflow: hidden;
+}
+.tip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tip-header strong { font-weight: 600; }
+.tip-chevron {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  color: var(--warn);
+}
+.tip-chevron.open { transform: rotate(180deg); }
+.tip-body {
+  display: none;
+  padding: 0 14px 12px;
+}
+.tip-body.open { display: block; }
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 13px;
+  font-family: var(--mono);
+  padding: 10px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+  animation: toast-in 0.2s ease;
+  white-space: nowrap;
+}
+.toast-undo {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: var(--surface);
+  font-family: var(--body);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Sticky export bar */
+.sticky-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 50;
+  max-width: 720px;
+  margin: 0 auto;
+}
+/* full-bleed bar background */
+.sticky-bar-bg {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  height: 64px;
+  z-index: 49;
+}
+.sticky-count {
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-family: var(--mono);
+}
+.sticky-count span { font-weight: 600; color: var(--ink); }
+
+/* Manual entry modal */
+.modal-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 23, 21, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+.modal-bg.show { display: flex; }
+.modal {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 380px;
+  width: 100%;
+}
+.modal h3 {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+.modal p { font-size: 13px; color: var(--ink-muted); margin-bottom: 16px; }
+.modal input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 18px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.modal input:focus { border-color: var(--accent); }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions button {
+  flex: 1;
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 11px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.modal-actions .cancel { background: var(--surface); border: 1px solid var(--line); color: var(--ink-muted); }
+.modal-actions .confirm { background: var(--ink); border: 1px solid var(--ink); color: var(--surface); }
+
+/* Candidates picker */
+.candidates {
+  display: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.candidates.show { display: block; }
+.candidates-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+.candidates-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.candidate-chip {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 6px 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.candidate-chip:hover { background: var(--accent); color: white; }
+
+@media (max-width: 480px) {
+  h1 { font-size: 22px; }
+  .mode-btn { padding: 12px; }
+  .result-value { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<header>
+  <h1>Inventory scanner</h1>
+  <div class="session-info">
+    <span class="count" id="totalCount">0</span> scanned
+  </div>
+</header>
+
+<div class="mode-row">
+  <button class="mode-btn active" data-mode="ipad" id="modeIpad">
+    <span class="label">iPad</span>
+    <span class="hint">serial · 10 or 12 chars</span>
+  </button>
+  <button class="mode-btn" data-mode="iphone" id="modeIphone">
+    <span class="label">iPhone</span>
+    <span class="hint">imei · 15 digits</span>
+  </button>
+</div>
+
+<div class="stage" id="stage">
+
+  <div id="emptyState" class="empty-state">
+    <div class="empty-state-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    </div>
+    <h2>Scan a device</h2>
+    <p>Frame the engraving or About page clearly</p>
+    <div class="empty-actions">
+      <button class="btn-primary" id="addPhotoBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Add photo
+      </button>
+      <button class="btn-secondary" id="manualBtn">Enter serial</button>
+    </div>
+    <input type="file" id="photoInput" accept="image/*">
+  </div>
+
+  <div id="photoStage" style="display:none;">
+    <div class="photo-area">
+      <div class="photo-canvas-wrap">
+        <img id="photoImg" alt="Captured device">
+        <canvas id="photoCanvas"></canvas>
+        <div class="crop-overlay" id="cropOverlay">
+          <div class="crop-box" id="cropBox">
+            <div class="crop-handle tl"></div>
+            <div class="crop-handle tr"></div>
+            <div class="crop-handle bl"></div>
+            <div class="crop-handle br"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="photo-actions">
+      <button class="ocr-btn" id="ocrBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+        Quick OCR
+      </button>
+      <button class="crop-btn" id="cropToggleBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+        Crop & OCR
+      </button>
+      <button class="retake-btn" id="retakeBtn">Retake</button>
+    </div>
+  </div>
+</div>
+
+<div class="ocr-progress" id="ocrProgress">Reading text…</div>
+
+<div class="result-card" id="resultCard">
+  <div class="result-label" id="resultLabel">Detected serial</div>
+  <input type="text" class="result-value" id="resultValue" autocapitalize="characters" autocorrect="off" spellcheck="false">
+  <div class="result-status" id="resultStatus"></div>
+  <div class="candidates" id="candidates">
+    <div class="candidates-label">Other possibilities — tap to use</div>
+    <div class="candidates-list" id="candidatesList"></div>
+  </div>
+  <div class="result-actions">
+    <button id="discardBtn">Discard</button>
+    <button class="save-btn" id="saveBtn">Save & next</button>
+  </div>
+</div>
+
+<div class="scans-section">
+  <div class="scans-header">
+    <h2>Captured</h2>
+  </div>
+  <div class="scans-empty" id="scansEmpty">No scans yet — start with a device above</div>
+  <ul class="scans-list" id="scansList"></ul>
+</div>
+
+<div class="tip" id="tipBlock">
+  <div class="tip-header" id="tipToggle">
+    <strong>Tip</strong>
+    <span class="tip-chevron" id="tipChevron">▼</span>
+  </div>
+  <div class="tip-body" id="tipBody">
+    For engraved backs, use a torch from a low side angle so the letters cast shadows. The About page (Settings → General → About) scans much more reliably than engravings — try Crop &amp; OCR there.
+  </div>
+</div>
+
+</div>
+
+<div class="sticky-bar-bg"></div>
+<div class="sticky-bar" id="stickyBar">
+  <span class="sticky-count"><span id="stickyCount">0</span> scanned</span>
+  <button class="export-btn" id="exportBtn" disabled>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export .xlsx
+  </button>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Enter serial</h3>
+    <p id="modalDesc">Type or paste the identifier from the device</p>
+    <input type="text" id="modalInput" autocapitalize="characters" autocorrect="off" spellcheck="false">
+    <div class="modal-actions">
+      <button class="cancel" id="modalCancel">Cancel</button>
+      <button class="confirm" id="modalConfirm">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+// ===== State =====
+let mode = 'ipad';
+let scans = [];
+let currentImage = null; // HTMLImageElement of the captured photo
+let cropRect = null; // {x, y, w, h} in image-natural coordinates
+
+const hasNativeOCR = 'TextDetector' in window;
+
+const photoInput = document.getElementById('photoInput');
+const emptyState = document.getElementById('emptyState');
+const photoStage = document.getElementById('photoStage');
+const photoImg = document.getElementById('photoImg');
+const photoCanvas = document.getElementById('photoCanvas');
+const cropOverlay = document.getElementById('cropOverlay');
+const cropBox = document.getElementById('cropBox');
+const ocrBtn = document.getElementById('ocrBtn');
+const cropToggleBtn = document.getElementById('cropToggleBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const ocrProgress = document.getElementById('ocrProgress');
+const resultCard = document.getElementById('resultCard');
+const resultValue = document.getElementById('resultValue');
+const resultStatus = document.getElementById('resultStatus');
+const resultLabel = document.getElementById('resultLabel');
+const saveBtn = document.getElementById('saveBtn');
+const discardBtn = document.getElementById('discardBtn');
+const scansList = document.getElementById('scansList');
+const scansEmpty = document.getElementById('scansEmpty');
+const totalCount = document.getElementById('totalCount');
+const stickyCount = document.getElementById('stickyCount');
+const exportBtn = document.getElementById('exportBtn');
+const toastContainer = document.getElementById('toastContainer');
+const modalBg = document.getElementById('modalBg');
+const modalInput = document.getElementById('modalInput');
+const modalTitle = document.getElementById('modalTitle');
+const modalDesc = document.getElementById('modalDesc');
+
+// ===== Mode switching =====
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    resultCard.classList.remove('show');
+  });
+});
+
+// ===== Photo capture =====
+document.getElementById('addPhotoBtn').addEventListener('click', () => photoInput.click());
+
+photoInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  loadPhoto(file);
+  e.target.value = '';
+});
+
+function loadPhoto(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    photoImg.onload = () => {
+      currentImage = photoImg;
+      emptyState.style.display = 'none';
+      photoStage.style.display = 'block';
+      resultCard.classList.remove('show');
+      cropOverlay.classList.remove('active');
+      cropRect = null;
+    };
+    photoImg.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+retakeBtn.addEventListener('click', () => {
+  emptyState.style.display = 'block';
+  photoStage.style.display = 'none';
+  resultCard.classList.remove('show');
+  currentImage = null;
+});
+
+// ===== Crop UI =====
+cropToggleBtn.addEventListener('click', () => {
+  if (!cropOverlay.classList.contains('active')) {
+    activateCrop();
+  } else {
+    runOCRWithCrop();
+  }
+});
+
+function activateCrop() {
+  cropOverlay.classList.add('active');
+  cropToggleBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+    OCR cropped area
+  `;
+  // Initialize crop box to a sensible default (middle horizontal band)
+  const wrap = photoImg.parentElement;
+  const wrapRect = wrap.getBoundingClientRect();
+  const imgRect = photoImg.getBoundingClientRect();
+  // Position relative to wrap
+  const offsetLeft = imgRect.left - wrapRect.left;
+  const offsetTop = imgRect.top - wrapRect.top;
+
+  const boxW = imgRect.width * 0.7;
+  const boxH = Math.max(40, imgRect.height * 0.15);
+  const boxX = offsetLeft + (imgRect.width - boxW) / 2;
+  const boxY = offsetTop + (imgRect.height - boxH) / 2;
+  cropBox.style.left = boxX + 'px';
+  cropBox.style.top = boxY + 'px';
+  cropBox.style.width = boxW + 'px';
+  cropBox.style.height = boxH + 'px';
+}
+
+// Drag/resize crop box
+let dragMode = null;
+let dragStart = null;
+
+cropBox.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const target = e.target;
+  if (target.classList.contains('crop-handle')) {
+    dragMode = 'resize-' + (target.classList.contains('tl') ? 'tl' :
+                            target.classList.contains('tr') ? 'tr' :
+                            target.classList.contains('bl') ? 'bl' : 'br');
+  } else {
+    dragMode = 'move';
+  }
+  const rect = cropBox.getBoundingClientRect();
+  dragStart = {
+    x: e.clientX, y: e.clientY,
+    boxLeft: parseFloat(cropBox.style.left),
+    boxTop: parseFloat(cropBox.style.top),
+    boxW: rect.width, boxH: rect.height
+  };
+  cropBox.setPointerCapture(e.pointerId);
+});
+
+cropBox.addEventListener('pointermove', e => {
+  if (!dragMode) return;
+  e.preventDefault();
+  const dx = e.clientX - dragStart.x;
+  const dy = e.clientY - dragStart.y;
+  const wrap = photoImg.parentElement;
+  const wrapRect = wrap.getBoundingClientRect();
+  const imgRect = photoImg.getBoundingClientRect();
+  const minX = imgRect.left - wrapRect.left;
+  const minY = imgRect.top - wrapRect.top;
+  const maxX = minX + imgRect.width;
+  const maxY = minY + imgRect.height;
+
+  let left = dragStart.boxLeft, top = dragStart.boxTop;
+  let w = dragStart.boxW, h = dragStart.boxH;
+
+  if (dragMode === 'move') {
+    left = Math.max(minX, Math.min(maxX - w, dragStart.boxLeft + dx));
+    top = Math.max(minY, Math.min(maxY - h, dragStart.boxTop + dy));
+  } else if (dragMode === 'resize-br') {
+    w = Math.max(40, Math.min(maxX - left, dragStart.boxW + dx));
+    h = Math.max(28, Math.min(maxY - top, dragStart.boxH + dy));
+  } else if (dragMode === 'resize-bl') {
+    const newLeft = Math.max(minX, dragStart.boxLeft + dx);
+    w = Math.max(40, dragStart.boxW + (dragStart.boxLeft - newLeft));
+    left = newLeft;
+    h = Math.max(28, Math.min(maxY - top, dragStart.boxH + dy));
+  } else if (dragMode === 'resize-tr') {
+    const newTop = Math.max(minY, dragStart.boxTop + dy);
+    h = Math.max(28, dragStart.boxH + (dragStart.boxTop - newTop));
+    top = newTop;
+    w = Math.max(40, Math.min(maxX - left, dragStart.boxW + dx));
+  } else if (dragMode === 'resize-tl') {
+    const newLeft = Math.max(minX, dragStart.boxLeft + dx);
+    const newTop = Math.max(minY, dragStart.boxTop + dy);
+    w = Math.max(40, dragStart.boxW + (dragStart.boxLeft - newLeft));
+    h = Math.max(28, dragStart.boxH + (dragStart.boxTop - newTop));
+    left = newLeft;
+    top = newTop;
+  }
+  cropBox.style.left = left + 'px';
+  cropBox.style.top = top + 'px';
+  cropBox.style.width = w + 'px';
+  cropBox.style.height = h + 'px';
+});
+
+cropBox.addEventListener('pointerup', e => {
+  dragMode = null;
+});
+
+// Prevent page scroll/zoom when interacting with the crop area
+cropOverlay.addEventListener('touchmove', e => {
+  if (cropOverlay.classList.contains('active')) e.preventDefault();
+}, { passive: false });
+
+function getCropRectInImageCoords() {
+  const wrap = photoImg.parentElement;
+  const wrapRect = wrap.getBoundingClientRect();
+  const imgRect = photoImg.getBoundingClientRect();
+  const boxRect = cropBox.getBoundingClientRect();
+  const offsetX = imgRect.left - wrapRect.left;
+  const offsetY = imgRect.top - wrapRect.top;
+  // Position of box relative to image
+  const relX = (boxRect.left - wrapRect.left) - offsetX;
+  const relY = (boxRect.top - wrapRect.top) - offsetY;
+  // Scale to natural image coords
+  const scaleX = photoImg.naturalWidth / imgRect.width;
+  const scaleY = photoImg.naturalHeight / imgRect.height;
+  return {
+    x: Math.max(0, relX * scaleX),
+    y: Math.max(0, relY * scaleY),
+    w: Math.min(photoImg.naturalWidth, boxRect.width * scaleX),
+    h: Math.min(photoImg.naturalHeight, boxRect.height * scaleY)
+  };
+}
+
+// ===== OCR =====
+ocrBtn.addEventListener('click', () => runOCR(null));
+
+function runOCRWithCrop() {
+  const r = getCropRectInImageCoords();
+  cropOverlay.classList.remove('active');
+  cropToggleBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>
+    Crop & OCR
+  `;
+  runOCR(r);
+}
+
+async function runOCR(crop) {
+  if (!currentImage) return;
+  ocrBtn.disabled = true;
+  cropToggleBtn.disabled = true;
+  ocrProgress.classList.add('show');
+  ocrProgress.textContent = 'Preparing image…';
+  resultCard.classList.remove('show');
+
+  try {
+    const sourceCanvas = document.createElement('canvas');
+    const sctx = sourceCanvas.getContext('2d');
+    if (crop) {
+      sourceCanvas.width = crop.w;
+      sourceCanvas.height = crop.h;
+      sctx.drawImage(currentImage, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+    } else {
+      sourceCanvas.width = currentImage.naturalWidth;
+      sourceCanvas.height = currentImage.naturalHeight;
+      sctx.drawImage(currentImage, 0, 0);
+    }
+
+    let bestRawText = '';
+    const allCandidates = new Set();
+
+    if (hasNativeOCR) {
+      // Use device-native text recognition (ML Kit on Android, OS engine on desktop)
+      ocrProgress.textContent = 'Reading with device OCR…';
+      const bitmap = await createImageBitmap(sourceCanvas);
+      const detector = new TextDetector();
+      const results = await detector.detect(bitmap);
+      bitmap.close();
+      const fullText = results.map(r => r.rawValue).join('\n');
+      const extracted = extractByLabel(fullText, mode);
+      const tokens = findAllTokens(fullText, mode);
+      tokens.forEach(t => allCandidates.add(t));
+      bestRawText = extracted || tokens[0] || '';
+    } else {
+      // Tesseract fallback: run 3 passes (original, high-contrast, inverted)
+      const variants = [
+        sourceCanvas,
+        preprocess(sourceCanvas, false),
+        preprocess(sourceCanvas, true)
+      ];
+      const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:./- ';
+      let bestScore = -1;
+
+      for (let i = 0; i < variants.length; i++) {
+        ocrProgress.textContent = `Reading text… pass ${i+1} of ${variants.length}`;
+        try {
+          const { data } = await Tesseract.recognize(variants[i], 'eng', {
+            logger: m => {
+              if (m.status === 'recognizing text') {
+                ocrProgress.textContent = `Pass ${i+1}/${variants.length}… ${Math.round(m.progress * 100)}%`;
+              }
+            },
+            tessedit_char_whitelist: charset
+          });
+          const rawText = data.text || '';
+          const extracted = extractByLabel(rawText, mode);
+          const tokens = findAllTokens(rawText, mode);
+          tokens.forEach(t => allCandidates.add(t));
+          const conf = data.confidence || 0;
+          const score = conf + (extracted ? 100 : 0) + (extracted ? scoreLength(extracted, mode) : 0);
+          if (score > bestScore) {
+            bestScore = score;
+            bestRawText = extracted || tokens[0] || '';
+          }
+        } catch (e) { console.warn('OCR pass failed:', e); }
+      }
+    }
+
+    showDetection(bestRawText, null, [...allCandidates].filter(c => c !== bestRawText));
+  } catch (err) {
+    showDetection('', 'OCR failed — try cropping closer or type manually', []);
+  } finally {
+    ocrBtn.disabled = false;
+    cropToggleBtn.disabled = false;
+    ocrProgress.classList.remove('show');
+  }
+}
+
+// Find the serial/IMEI by looking for its label in the OCR text.
+// iPads engrave "Serial" or "S/N" before the number.
+// Apple About screens show "Serial Number" / "IMEI" labels.
+function extractByLabel(text, mode) {
+  if (!text) return null;
+  // Normalize whitespace and case-insensitive matching
+  const lines = text.split(/\r?\n/);
+
+  if (mode === 'iphone') {
+    // Look for IMEI label
+    const imeiPatterns = [
+      /IMEI\s*[:#]?\s*([\d\s]{15,20})/i,
+      /IMEI\s*1?\s*[:#]?\s*([\d\s]{15,20})/i,
+      /MEID\s*[:#]?\s*([\d\s]{14,18})/i,
+    ];
+    for (const re of imeiPatterns) {
+      const m = text.match(re);
+      if (m) {
+        const digits = m[1].replace(/\D/g, '');
+        if (digits.length >= 14 && digits.length <= 17) {
+          // Prefer exact 15
+          if (digits.length === 15) return digits;
+          // Otherwise trim/pad sensibly
+          return digits.slice(0, 15);
+        }
+      }
+    }
+    // Also accept Serial label in iPhone mode (About screen shows both)
+    const serialMatch = text.match(/Serial\s*(?:Number|No\.?)?\s*[:#]?\s*([A-Z0-9]{10,12})/i);
+    if (serialMatch) return serialMatch[1].toUpperCase();
+    return null;
+  }
+
+  // iPad mode: look for Serial label
+  const serialPatterns = [
+    /Serial\s*(?:Number|No\.?)?\s*[:#]?\s*([A-Z0-9]{10,12})/i,
+    /S\s*\/?\s*N\s*[:#]?\s*([A-Z0-9]{10,12})/i,
+    /SN\s*[:#]?\s*([A-Z0-9]{10,12})/i,
+  ];
+  for (const re of serialPatterns) {
+    const m = text.match(re);
+    if (m) return m[1].toUpperCase();
+  }
+  return null;
+}
+
+// Fallback: pull every alphanumeric token of plausible length
+function findAllTokens(text, mode) {
+  if (!text) return [];
+  const upper = text.toUpperCase();
+  const tokens = [];
+  if (mode === 'iphone') {
+    // 14-17 digit runs
+    const matches = upper.match(/\d{14,17}/g) || [];
+    matches.forEach(m => tokens.push(m.length === 15 ? m : m.slice(0, 15)));
+  } else {
+    // 10 or 12 char alphanumeric tokens
+    const matches = upper.match(/[A-Z0-9]{10,12}/g) || [];
+    matches.forEach(m => {
+      // Reject things that look like model numbers (often start with letter+digits in known patterns)
+      // Keep all for now and let the user pick
+      tokens.push(m);
+    });
+  }
+  return [...new Set(tokens)];
+}
+
+function scoreLength(text, mode) {
+  if (mode === 'iphone') {
+    if (text.length === 15) return 50;
+    if (text.length >= 13 && text.length <= 17) return 20;
+    return 0;
+  }
+  if (text.length === 12 || text.length === 10) return 50;
+  if (text.length >= 9 && text.length <= 13) return 20;
+  return 0;
+}
+
+function preprocess(srcCanvas, invert) {
+  const c = document.createElement('canvas');
+  c.width = srcCanvas.width;
+  c.height = srcCanvas.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(srcCanvas, 0, 0);
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+
+  // Grayscale + contrast stretch
+  let min = 255, max = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+    if (g < min) min = g;
+    if (g > max) max = g;
+  }
+  const range = Math.max(1, max - min);
+  for (let i = 0; i < d.length; i += 4) {
+    let g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+    g = ((g - min) / range) * 255;
+    // Mild thresholding
+    if (g < 90) g = Math.max(0, g - 30);
+    else if (g > 160) g = Math.min(255, g + 30);
+    if (invert) g = 255 - g;
+    d[i] = d[i+1] = d[i+2] = g;
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+// ===== Detection display =====
+function showDetection(rawText, errorMsg, candidates) {
+  resultLabel.textContent = mode === 'iphone' ? 'Detected IMEI' : 'Detected serial';
+  resultValue.value = rawText || '';
+  resultCard.classList.add('show');
+  resultValue.focus();
+  resultValue.select();
+  validate();
+  if (errorMsg) {
+    resultStatus.textContent = errorMsg;
+    resultStatus.className = 'result-status bad';
+  }
+  // Render candidates
+  const candList = document.getElementById('candidatesList');
+  const candWrap = document.getElementById('candidates');
+  candList.innerHTML = '';
+  const filtered = (candidates || []).filter(c => c && c !== rawText).slice(0, 6);
+  if (filtered.length > 0) {
+    candWrap.classList.add('show');
+    filtered.forEach(c => {
+      const chip = document.createElement('button');
+      chip.className = 'candidate-chip';
+      chip.textContent = c;
+      chip.addEventListener('click', () => {
+        resultValue.value = c;
+        validate();
+      });
+      candList.appendChild(chip);
+    });
+  } else {
+    candWrap.classList.remove('show');
+  }
+  setTimeout(() => resultCard.scrollIntoView({behavior: 'smooth', block: 'nearest'}), 100);
+}
+
+resultValue.addEventListener('input', validate);
+
+function validate() {
+  const v = resultValue.value.toUpperCase().replace(/\s/g, '');
+  resultValue.value = v;
+  if (!v) {
+    resultStatus.textContent = 'empty';
+    resultStatus.className = 'result-status bad';
+    return false;
+  }
+  if (mode === 'iphone') {
+    if (!/^\d+$/.test(v)) {
+      resultStatus.textContent = 'imei must be digits only';
+      resultStatus.className = 'result-status bad';
+      return true;
+    }
+    if (v.length !== 15) {
+      resultStatus.textContent = `${v.length} digits — IMEI should be 15`;
+      resultStatus.className = 'result-status warn';
+      return true;
+    }
+    if (luhn(v)) {
+      resultStatus.textContent = '✓ 15 digits · Luhn check passed';
+      resultStatus.className = 'result-status ok';
+    } else {
+      resultStatus.textContent = '15 digits but Luhn check failed — likely an OCR error';
+      resultStatus.className = 'result-status warn';
+    }
+    return true;
+  }
+  if (!/^[A-Z0-9]+$/.test(v)) {
+    resultStatus.textContent = 'serial must be letters and digits only';
+    resultStatus.className = 'result-status bad';
+    return true;
+  }
+  if (v.length === 10 || v.length === 12) {
+    resultStatus.textContent = `✓ ${v.length} chars · valid serial format`;
+    resultStatus.className = 'result-status ok';
+  } else {
+    resultStatus.textContent = `${v.length} chars — iPad serial should be 10 or 12`;
+    resultStatus.className = 'result-status warn';
+  }
+  return true;
+}
+
+function luhn(s) {
+  let sum = 0;
+  for (let i = 0; i < s.length; i++) {
+    let d = parseInt(s[s.length - 1 - i], 10);
+    if (i % 2 === 1) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+  }
+  return sum % 10 === 0;
+}
+
+// ===== Toast =====
+function showToast(msg, undoFn) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span>${msg}</span>`;
+  if (undoFn) {
+    const btn = document.createElement('button');
+    btn.className = 'toast-undo';
+    btn.textContent = 'Undo';
+    btn.addEventListener('click', () => { undoFn(); el.remove(); });
+    el.appendChild(btn);
+  }
+  toastContainer.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ===== Save / discard =====
+saveBtn.addEventListener('click', () => {
+  const v = resultValue.value.toUpperCase().replace(/\s/g, '');
+  if (!v) return;
+  const isDupe = scans.some(s => s.identifier === v);
+  scans.push({
+    type: mode === 'iphone' ? 'iPhone' : 'iPad',
+    field: mode === 'iphone' ? 'IMEI' : 'Serial',
+    identifier: v,
+    timestamp: new Date().toISOString()
+  });
+  saveScansToLocal();
+  renderScans();
+  resultCard.classList.remove('show');
+  emptyState.style.display = 'block';
+  photoStage.style.display = 'none';
+  currentImage = null;
+  if (isDupe) showToast(`${v} already in list — saved again`);
+});
+
+discardBtn.addEventListener('click', () => {
+  resultCard.classList.remove('show');
+});
+
+// ===== Manual entry =====
+document.getElementById('manualBtn').addEventListener('click', async () => {
+  let prefill = '';
+  try {
+    const text = await navigator.clipboard.readText();
+    prefill = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  } catch (e) { /* clipboard denied — just open modal empty */ }
+
+  if (prefill) {
+    showDetection(prefill, null, []);
+    return;
+  }
+
+  modalTitle.textContent = mode === 'iphone' ? 'Enter IMEI' : 'Enter iPad serial';
+  modalDesc.textContent = mode === 'iphone'
+    ? 'Type or paste the 15-digit IMEI'
+    : 'Type or paste the 10 or 12-character serial';
+  modalInput.value = '';
+  modalBg.classList.add('show');
+  setTimeout(() => modalInput.focus(), 50);
+});
+
+document.getElementById('modalCancel').addEventListener('click', () => {
+  modalBg.classList.remove('show');
+});
+modalBg.addEventListener('click', e => {
+  if (e.target === modalBg) modalBg.classList.remove('show');
+});
+document.getElementById('modalConfirm').addEventListener('click', () => {
+  const v = modalInput.value.toUpperCase().replace(/\s/g, '');
+  if (!v) return;
+  modalBg.classList.remove('show');
+  showDetection(v, null, []);
+});
+modalInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('modalConfirm').click();
+});
+
+// ===== List rendering =====
+function renderScans() {
+  totalCount.textContent = scans.length;
+  stickyCount.textContent = scans.length;
+  exportBtn.disabled = scans.length === 0;
+  if (scans.length === 0) {
+    scansEmpty.style.display = 'block';
+    scansList.innerHTML = '';
+    return;
+  }
+  scansEmpty.style.display = 'none';
+  scansList.innerHTML = scans.map((s, i) => {
+    const time = new Date(s.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    return `
+      <li class="scan-item">
+        <span class="scan-type ${s.type.toLowerCase()}">${s.type}</span>
+        <div>
+          <div class="scan-id">${s.identifier}</div>
+          <div class="scan-meta">${s.field} · ${time}</div>
+        </div>
+        <button class="scan-delete" data-idx="${i}" title="Delete">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        </button>
+      </li>
+    `;
+  }).join('');
+  scansList.querySelectorAll('.scan-delete').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const removed = scans.splice(idx, 1)[0];
+      saveScansToLocal();
+      renderScans();
+      showToast(`Deleted ${removed.identifier}`, () => {
+        scans.splice(idx, 0, removed);
+        saveScansToLocal();
+        renderScans();
+      });
+    });
+  });
+}
+
+// ===== Persistence =====
+function saveScansToLocal() {
+  try { sessionStorage.setItem('scans', JSON.stringify(scans)); } catch(e){}
+}
+function loadScansFromLocal() {
+  try {
+    const raw = sessionStorage.getItem('scans');
+    if (raw) scans = JSON.parse(raw);
+  } catch(e){}
+}
+
+// ===== Export =====
+exportBtn.addEventListener('click', () => {
+  const rows = [['Type', 'Field', 'Identifier', 'Timestamp']];
+  scans.forEach(s => rows.push([s.type, s.field, s.identifier, s.timestamp]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch: 8}, {wch: 8}, {wch: 22}, {wch: 24}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+  const date = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `inventory-${date}.xlsx`);
+});
+
+// ===== Tip toggle =====
+document.getElementById('tipToggle').addEventListener('click', () => {
+  const body = document.getElementById('tipBody');
+  const chevron = document.getElementById('tipChevron');
+  const open = body.classList.toggle('open');
+  chevron.classList.toggle('open', open);
+});
+
+// ===== Init =====
+loadScansFromLocal();
+renderScans();
+
+// Label OCR button with the active engine so the user knows what's running
+if (hasNativeOCR) {
+  ocrBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+    Quick OCR <span style="font-size:10px;opacity:0.7;font-family:var(--mono)">· device</span>
+  `;
+} else {
+  ocrBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+    Quick OCR <span style="font-size:10px;opacity:0.7;font-family:var(--mono)">· tesseract</span>
+  `;
+}
+</script>
+
+</body>
+</html>
